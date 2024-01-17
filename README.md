@@ -1,4 +1,14 @@
 # ipv6-proxy-pool
+
+原作者项目地址[https://github.com/stmtc233/ipv6-proxy-pool](https://github.com/stmtc233/ipv6-proxy-pool)
+
+修改内容:
+  -去除了ipv6启动时的显示
+  -新增时打印进度
+  -修复某些解析ipv6地址时冒号存在的问题
+
+以下是原Readme
+
 一个socks服务器 仅支持ipv6 访问时随机选择一个ip作为出口
 
 仅供学习参考
