@@ -14,8 +14,10 @@ import (
 
 	"gopkg.in/ini.v1"
 )
+
 var ipv6Addresses []string
 var counter *Counter
+var osName string
 
 type Counter struct {
 	mu     sync.Mutex
@@ -41,6 +43,7 @@ func (c *Counter) Increment() int {
 	c.count++
 	return currentCount
 }
+
 func isFirstCharacterTwo(input string) bool {
 	if len(input) == 0 {
 		return false
@@ -164,6 +167,7 @@ func handleClient(clientConn net.Conn) {
 		fmt.Println("Error copying from destination to client:", err)
 	}
 }
+
 func zdipfw(netw, addr string, fwip string) (net.Conn, error) {
 	//本地地址
 	lAddr, err := net.ResolveTCPAddr(netw, "["+fwip+"]:0")
@@ -184,12 +188,9 @@ func zdipfw(netw, addr string, fwip string) (net.Conn, error) {
 	return conn, nil
 }
 
-var osName string
-
 func main() {
 	osName = runtime.GOOS
 
-	// 判断操作系统类型
 	switch osName {
 	case "windows":
 		fmt.Println("当前操作系统是 Windows")
@@ -217,6 +218,13 @@ func main() {
 	ipv6Addresses, _ = getIPv6Addresses(networkName)
 	maxVal := len(ipv6Addresses)
 	counter = NewCounter(maxVal)
+
+	// 获取当前地址
+	ipv6Addresses, _ = getIPv6Addresses(networkName)
+	maxVal = len(ipv6Addresses)
+	counter = NewCounter(maxVal)
+	fmt.Printf("总共有 %d 个 IPv6 地址\n", maxVal)
+	
 	// 删除除了ya之外的ipv6地址
 	p := promptForYesNo("是否要删除当前除64位前缀以外的地址（谨慎操作）")
 	if p {
@@ -224,24 +232,37 @@ func main() {
 		processIPv6Addresses(ipv6Addresses, networkName, ya)
 		fmt.Println("删除完成")
 	}
+
+
+	// 在用户确认要添加IPv6地址时，添加循环，每生成200个IPv6地址打印一次当前生成进度
 	p = promptForYesNo("是否添加ipv6地址")
 	if p {
-		//生成地址
 		var userInput int
 		fmt.Print("添加的数量:")
 		fmt.Scanf("%d", &userInput)
 		fmt.Println("添加地址中")
-		na := generateRandomIPv6Batch(ya[0], userInput)
-		for c := 0; c < len(na); c++ {
-			setaddres("add", networkName, na[c])
-		}
-	}
 
-	//获取当前地址
-	ipv6Addresses, _ = getIPv6Addresses(networkName)
-	maxVal = len(ipv6Addresses)
-	counter = NewCounter(maxVal)
-	fmt.Printf("You have %d IPv6 addresses.\n", len(ipv6Addresses))
+		// 计算总共需要生成的地址数
+		totalAddresses := len(ipv6Addresses) + userInput
+		addressesGenerated := 0
+
+		// 在用户确认要添加IPv6地址时，添加循环，每生成200个IPv6地址打印一次当前生成进度
+		for c := 0; c < userInput; c++ {
+		   na := generateRandomIPv6Batch(ya[0], 1)
+		   setaddres("add", networkName, na[0])
+		   addressesGenerated++
+		
+		   // 每生成200个地址打印一次进度
+		   if addressesGenerated%200 == 0 {
+		      fmt.Printf("已生成 %d/%d IPv6 地址\n", addressesGenerated, userInput)
+		   }
+		}
+		fmt.Println("添加完成")
+		
+		// 使用 totalAddresses 变量显示总生成的地址数量
+		totalAddresses = addressesGenerated
+		fmt.Printf("总共生成了 %d 个 IPv6 地址\n", totalAddresses)
+	}
 
 	listenAddr := "0.0.0.0:1080"
 	listener, err := net.Listen("tcp", listenAddr)
@@ -262,6 +283,7 @@ func main() {
 		go handleClient(clientConn)
 	}
 }
+
 func promptForYesNo(prompt string) bool {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -310,7 +332,7 @@ func get64(Networkname string) []string {
 		addrStr := addr.String()
 		// 检查地址字符串中的前缀长度是否为64
 		if isFirstCharacterTwo(addrStr) {
-			fmt.Println("IPv6 地址:", addr)
+			//fmt.Println("IPv6 地址:", addr)
 			if strings.HasSuffix(addrStr, "/64") {
 				//fmt.Println("IPv6 地址:", addr)
 				r = append(r, strings.TrimSuffix(addrStr, "/64"))
