@@ -137,7 +137,7 @@ func handleClient(clientConn net.Conn) {
 
 	destPort := int(buf[n-2])<<8 + int(buf[n-1])
 
-	// 修复建立到目标服务器的连接
+	// 建立到目标服务器的连接
 	destConn, err := zdipfw("tcp6", fmt.Sprintf("[%s]:%d", destAddr, destPort), ipv6Addresses[counter.Increment()])
 
 	//destConn, err := zdipfw("tcp6", fmt.Sprintf("%s:%d", destAddr, destPort), ipv6Addresses[counter.Increment()])
@@ -248,15 +248,20 @@ func main() {
 		addressesGenerated := 0
 
 		// 在用户确认要添加IPv6地址时，添加循环，每生成200个IPv6地址打印一次当前生成进度
-		for c := 0; c < userInput; c++ {
-		   na := generateRandomIPv6Batch(ya[0], 1)
-		   setaddres("add", networkName, na[0])
-		   addressesGenerated++
-		
-		   // 每生成200个地址打印一次进度
-		   if addressesGenerated%200 == 0 {
-		      fmt.Printf("已生成 %d/%d IPv6 地址\n", addressesGenerated, userInput)
-		   }
+		if len(ya) > 0 {
+		    for c := 0; c < userInput; c++ {
+		        na := generateRandomIPv6Batch(ya[0], 1)
+		        setaddres("add", networkName, na[0])
+		        addressesGenerated++
+
+		        // 每生成200个地址打印一次进度
+		        if addressesGenerated%200 == 0 {
+		            fmt.Printf("已生成 %d/%d IPv6 地址\n", addressesGenerated, userInput)
+		        }
+		    }
+		} else {
+		    fmt.Println("未找到IPv6地址")
+		    // 可能需要采取一些恢复措施或退出程序
 		}
 		fmt.Println("添加完成")
 		
