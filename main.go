@@ -137,9 +137,10 @@ func handleClient(clientConn net.Conn) {
 
 	destPort := int(buf[n-2])<<8 + int(buf[n-1])
 
-	// 建立到目标服务器的连接
+	// 修复建立到目标服务器的连接
+	destConn, err := zdipfw("tcp6", fmt.Sprintf("[%s]:%d", destAddr, destPort), ipv6Addresses[counter.Increment()])
 
-	destConn, err := zdipfw("tcp6", fmt.Sprintf("%s:%d", destAddr, destPort), ipv6Addresses[counter.Increment()])
+	//destConn, err := zdipfw("tcp6", fmt.Sprintf("%s:%d", destAddr, destPort), ipv6Addresses[counter.Increment()])
 
 	if err != nil {
 		fmt.Println("Error connecting to destination:", err)
