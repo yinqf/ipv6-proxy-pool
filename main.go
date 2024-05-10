@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"crypto/rand"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -11,8 +12,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-
-	"gopkg.in/ini.v1"
 )
 
 var ipv6Addresses []string
@@ -192,6 +191,19 @@ func zdipfw(netw, addr string, fwip string) (net.Conn, error) {
 func main() {
 	osName = runtime.GOOS
 
+	// 使用 var 声明变量
+	var networkName string
+	var delIpv6 bool
+	var addIpv6 bool
+	var num int
+
+	flag.StringVar(&networkName, "networkName", "eth0", "指定网络接口的名称")
+	flag.BoolVar(&delIpv6, "del", false, "是否要删除当前除64位前缀以外的地址")
+	flag.BoolVar(&addIpv6, "add", false, "是否添加ipv6地址")
+	flag.IntVar(&num, "num", 200, "添加的数量")
+
+	flag.Parse()
+
 	switch osName {
 	case "windows":
 		fmt.Println("当前操作系统是 Windows")
@@ -200,18 +212,8 @@ func main() {
 	default:
 		fmt.Println("未知操作系统")
 	}
-	// 加载INI配置文件
 
-	cfg, err := ini.Load("config.ini")
-	if err != nil {
-		fmt.Println("无法加载INI配置文件:", err)
-		return
-	}
-
-	// 获取Networkname字段
-	section := cfg.Section("")
-	networkName := section.Key("Networkname").String()
-	fmt.Println("Networkname:", networkName)
+	fmt.Println("networkName:", networkName)
 	//获取前缀长度为64的公网地址
 	ya := get64(networkName)
 
@@ -225,46 +227,38 @@ func main() {
 	maxVal = len(ipv6Addresses)
 	counter = NewCounter(maxVal)
 	fmt.Printf("总共有 %d 个 IPv6 地址\n", maxVal)
-	
+
 	// 删除除了ya之外的ipv6地址
-	p := promptForYesNo("是否要删除当前除64位前缀以外的地址（谨慎操作）")
-	if p {
+	if delIpv6 {
 		fmt.Println("正在删除地址")
 		processIPv6Addresses(ipv6Addresses, networkName, ya)
 		fmt.Println("删除完成")
 	}
 
-
 	// 在用户确认要添加IPv6地址时，添加循环，每生成200个IPv6地址打印一次当前生成进度
-	p = promptForYesNo("是否添加ipv6地址")
-	if p {
-		var userInput int
-		fmt.Print("添加的数量:")
-		fmt.Scanf("%d", &userInput)
-		fmt.Println("添加地址中")
-
+	if addIpv6 {
 		// 计算总共需要生成的地址数
-		totalAddresses := len(ipv6Addresses) + userInput
+		totalAddresses := len(ipv6Addresses) + num
 		addressesGenerated := 0
 
 		// 在用户确认要添加IPv6地址时，添加循环，每生成200个IPv6地址打印一次当前生成进度
 		if len(ya) > 0 {
-		    for c := 0; c < userInput; c++ {
-		        na := generateRandomIPv6Batch(ya[0], 1)
-		        setaddres("add", networkName, na[0])
-		        addressesGenerated++
+			for c := 0; c < num; c++ {
+				na := generateRandomIPv6Batch(ya[0], 1)
+				setaddres("add", networkName, na[0])
+				addressesGenerated++
 
-		        // 每生成200个地址打印一次进度
-		        if addressesGenerated%200 == 0 {
-		            fmt.Printf("已生成 %d/%d IPv6 地址\n", addressesGenerated, userInput)
-		        }
-		    }
+				// 每生成200个地址打印一次进度
+				if addressesGenerated%200 == 0 {
+					fmt.Printf("已生成 %d/%d IPv6 地址\n", addressesGenerated, num)
+				}
+			}
 		} else {
-		    fmt.Println("未找到IPv6地址")
-		    // 可能需要采取一些恢复措施或退出程序
+			fmt.Println("未找到IPv6地址")
+			// 可能需要采取一些恢复措施或退出程序
 		}
 		fmt.Println("添加完成")
-		
+
 		// 使用 totalAddresses 变量显示总生成的地址数量
 		totalAddresses = addressesGenerated
 		fmt.Printf("总共生成了 %d 个 IPv6 地址\n", totalAddresses)
